@@ -1,0 +1,2 @@
+# startkit
+golang startgit 
