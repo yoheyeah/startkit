@@ -2,13 +2,15 @@ package startkit
 
 import (
 	"startkit/starter"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type Context struct {
 	*starter.Content
 }
 
-type StarterFunc func(c *Context)
+type StarterFunc func(c *Context) error
 
 func Default() *Context {
 	c := Context{}
@@ -24,8 +26,12 @@ func New(file string) *Context {
 	return &c
 }
 
-func (c *Context) Run(funcs ...StarterFunc) {
+func (c *Context) Run(funcs ...StarterFunc) (err error) {
+	var g errgroup.Group
 	for i := range funcs {
-		funcs[i](c)
+		g.Go(func() error {
+			return funcs[i](c)
+		})
 	}
+	return g.Wait()
 }
