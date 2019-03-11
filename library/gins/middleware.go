@@ -28,12 +28,17 @@ func GinErrors() gin.HandlerFunc {
 						})
 					}
 				case gin.ErrorTypeBind:
-					errs := e.Err.(validator.ValidationErrors)
-					list := make(map[string]string)
-					for _, err := range errs {
-						list[err.Field] = ValidationErrorToText(err)
+					var (
+						list   = make(map[string]string)
+						status = http.StatusBadRequest
+					)
+					if errs, ok := e.Err.(validator.ValidationErrors); ok {
+						for _, err := range errs {
+							list[err.Field] = ValidationErrorToText(err)
+						}
+					} else {
+						list["Error"] = e.Err.Error()
 					}
-					status := http.StatusBadRequest
 					if c.Writer.Status() != http.StatusOK {
 						status = c.Writer.Status()
 					}
@@ -43,11 +48,9 @@ func GinErrors() gin.HandlerFunc {
 							Data:    list,
 						},
 					})
-
 				default:
 					rollbar.RequestError(rollbar.ERR, c.Request, e.Err)
 				}
-
 			}
 			if !c.Writer.Written() {
 				c.JSON(http.StatusInternalServerError, gin.H{

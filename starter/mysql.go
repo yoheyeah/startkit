@@ -40,9 +40,9 @@ type MysqlInstance struct {
 
 type MysqlModel struct {
 	ID        int        `gorm:"primary_key" json:"id,omitempty"`
-	CreatedAt time.Time  `json:"created_at,omitempty" gorm:"column:created_at; sql:DEFAULT:TimeZero"`
-	UpdatedAt time.Time  `json:"edited_at,omitempty" gorm:"column:edited_at; sql:DEFAULT:TimeZero"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty" gorm:"column:deleted_at; sql:DEFAULT:TimeZero"`
+	CreatedAt time.Time  `json:"created_at,omitempty" gorm:"column:created_at; sql:type:datetime;default:'1980-01-01'"`
+	UpdatedAt time.Time  `json:"edited_at,omitempty" gorm:"column:edited_at; sql:type:datetime;default:'1980-01-01'"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty" gorm:"column:deleted_at"`
 	// CreatedTime int       `json:"created_time"`
 	// EditedTime  int       `json:"edited_time"`
 	// DeletedTime int       `json:"deleted_time"`
@@ -221,7 +221,7 @@ func (m *Mysql) AutoMigrateByAddr(objs ...interface{}) {
 	m.ModelAddrs = append(m.ModelAddrs, objs...)
 	for _, model := range m.ModelAddrs {
 		defer m.Connector()()
-		m.DB.AutoMigrate(model)
+		m.DB.Debug().AutoMigrate(model)
 	}
 	return
 }
