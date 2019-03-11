@@ -1,9 +1,5 @@
 package email
 
-import (
-	"github.com/matcornic/hermes"
-)
-
 const (
 	welcome        = "Welcome"
 	information    = "Information"
@@ -13,27 +9,20 @@ const (
 )
 
 type Template interface {
-	Email() hermes.Email
-	Name(string) string
+	Email() string
 }
 
-type Header struct {
-	Type, Sender, Topic, Link, Logo string
-	Receivers                       []string
-}
-
-func EmailInText() {
-
-}
-
-func EmailInHTML() {
-
+type Setter struct {
+	Host, Port                               string
+	User, Password                           string
+	Type, Sender, Subject, Topic, Link, Logo string
+	Receivers                                []string
 }
 
 func Type(t string) Template {
 	switch t {
 	case welcome:
-		return Welcome{}
+		return &Welcome{}
 	case information:
 		return nil
 	case resetPwd:
@@ -42,10 +31,11 @@ func Type(t string) Template {
 		return nil
 	case deleteAccount:
 		return nil
+	default:
+		return &Plain{}
 	}
 }
 
-func EmailTemplate(header *Header) {
-	m := Type(header.Type)
-	return m.Email()
+func EmailTemplate(setter *Setter) (err error) {
+	return setter.Send(Type(setter.Type).Email())
 }

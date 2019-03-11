@@ -5,10 +5,13 @@ import (
 )
 
 type Welcome struct {
-	ReceiverName  string
-	Introductions []string
-	Lists         map[string]string
-	Actions       []struct {
+	CompanyName     string
+	CompanyLink     string
+	CompanyLogoLink string
+	ReceiverName    string
+	Introductions   []string
+	Lists           map[string]string
+	Actions         []struct {
 		Instructions string
 		ButtonText   string
 		ButtonLink   string
@@ -16,21 +19,19 @@ type Welcome struct {
 	Ending []string
 }
 
-func (m *Welcome) Default() Welcome {
-	m = &Welcome{
-		
-	}
-	return m
-}
-
-func (m *Welcome) Name(name string) string {
-	return name
-}
-
-func (m *Welcome) Email() hermes.Email {
+func (m *Welcome) Email() (emailText string) {
 	var (
+		err     error
 		dict    = []hermes.Entry{}
 		actions = []hermes.Action{}
+		header  = hermes.Hermes{
+			Theme: new(hermes.Default),
+			Product: hermes.Product{
+				Name: m.CompanyName,
+				Link: m.CompanyLink,
+				Logo: m.CompanyLogoLink,
+			},
+		}
 	)
 	for k, v := range m.Lists {
 		dict = append(dict, hermes.Entry{
@@ -49,13 +50,17 @@ func (m *Welcome) Email() hermes.Email {
 			})
 		}
 	}
-	return hermes.Email{
+	email := hermes.Email{
 		Body: hermes.Body{
 			Name:       m.ReceiverName,
-			Intros:     Introductions,
+			Intros:     m.Introductions,
 			Dictionary: dict,
 			Actions:    actions,
 			Outros:     m.Ending,
 		},
 	}
+	if emailText, err = header.GeneratePlainText(email); err != nil {
+		return ""
+	}
+	return emailText
 }
