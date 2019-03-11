@@ -336,20 +336,20 @@ func (m *Server) Starter(c *Content) error {
 	return nil
 }
 
-func (m *Server) Start() error {
+func (m *Server) Start() (err error) {
 	if m.IsNoCert {
-		m.StartNoCert()
+		err = m.StartNoCert()
 	} else {
-		m.StartTLS()
+		err = m.StartTLS()
 	}
-	return nil
+	return
 }
 
 func (m *Server) Router(r Router) {
 	m.Router(r)
 }
 
-func (m *Server) StartNoCert() {
+func (m *Server) StartNoCert() error {
 	fmt.Fprintf(os.Stderr, "--- Started At Port [:%d] ---\n", m.Port)
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", m.Port),
@@ -360,7 +360,9 @@ func (m *Server) StartNoCert() {
 	err := server.ListenAndServe()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error = %s\n", err.Error())
+		return err
 	}
+	return nil
 }
 
 func (m *Server) StartTLS() error {
@@ -372,6 +374,7 @@ func (m *Server) StartTLS() error {
 		m.KeyFilePath,
 	)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error = %s\n", err.Error())
 		return err
 	}
 	server := &http.Server{
@@ -382,7 +385,12 @@ func (m *Server) StartTLS() error {
 		WriteTimeout: m.RequestTimeout,
 		IdleTimeout:  m.RequestTimeout,
 	}
-	return server.ListenAndServeTLS("", "")
+	err = server.ListenAndServeTLS("", "")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error = %s\n", err.Error())
+		return err
+	}
+	return nil
 }
 
 // Run: one-line LetsEncrypt HTTPS servers
