@@ -1,6 +1,7 @@
 package gins
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -21,6 +22,7 @@ func (m *Claim) CheckByObject(DB *gorm.DB, obj interface{}) (err error) {
 }
 
 func JWT(userID int, externalId, issuer, signedString string) (string, error) {
+	fmt.Println(userID, externalId, issuer, signedString)
 	var (
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, Claim{
 			ID:         userID,
@@ -36,7 +38,7 @@ func JWT(userID int, externalId, issuer, signedString string) (string, error) {
 				Subject:   "",
 			},
 		})
-		tkn, err = token.SignedString(signedString)
+		tkn, err = token.SignedString([]byte(signedString))
 	)
 	if err != nil {
 		return "", err

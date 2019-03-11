@@ -16,11 +16,12 @@ type Setter struct {
 	Host, Port                               string
 	User, Password                           string
 	Type, Sender, Subject, Topic, Link, Logo string
+	Content                                  string
 	Receivers                                []string
 }
 
-func Type(t string) Template {
-	switch t {
+func Type(setter *Setter) Template {
+	switch setter.Type {
 	case welcome:
 		return &Welcome{}
 	case information:
@@ -32,10 +33,10 @@ func Type(t string) Template {
 	case deleteAccount:
 		return nil
 	default:
-		return &Plain{}
+		return &Plain{setter}
 	}
 }
 
-func EmailTemplate(setter *Setter) (err error) {
-	return setter.Send(Type(setter.Type).Email())
+func SendEmailTemplate(setter *Setter) (err error) {
+	return setter.Send(Type(setter).Email())
 }

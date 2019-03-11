@@ -1,7 +1,7 @@
 package email
 
 type Plain struct {
-	Content string
+	*Setter
 }
 
 func (m *Plain) Email() (emailText string) {
