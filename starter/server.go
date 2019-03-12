@@ -172,8 +172,9 @@ func (m *Server) IsSessionsKeysExisted(keys []string) gin.HandlerFunc {
 	}
 }
 
-func (m *Server) SessionVarification(key string, DB *gorm.DB, obj interface{}, checkers []func(obj interface{}) (error, bool)) gin.HandlerFunc {
+func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, checkers []func(obj interface{}) (error, bool)) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		defer Mysql.Connector()()
 		var (
 			session   = sessions.Default(c)
 			value, ok = session.Get(key).(string)
@@ -195,7 +196,7 @@ func (m *Server) SessionVarification(key string, DB *gorm.DB, obj interface{}, c
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("Unofficial Sign Method for Token")
 			}
-			return m.JWTSignedString, nil
+			return []byte(m.JWTSignedString), nil
 		}); err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error_message": Resp{
@@ -239,7 +240,16 @@ func (m *Server) SessionVarification(key string, DB *gorm.DB, obj interface{}, c
 				})
 				return
 			}
-			if claim.CheckByObject(DB, obj); err != nil && err != gorm.ErrRecordNotFound {
+			if claim.CheckByObject(Mysql.DB, obj); err != nil {
+				if err == gorm.ErrRecordNotFound {
+					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+						"error_message": Resp{
+							Message: "Record Not Exist",
+							Data:    "Error: " + err.Error(),
+						},
+					})
+					return
+				}
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 					"error_message": Resp{
 						Message: "Error Occured While Validating Check",
@@ -250,15 +260,7 @@ func (m *Server) SessionVarification(key string, DB *gorm.DB, obj interface{}, c
 			}
 			if count := len(checkers); count > 0 {
 				for i := 0; i < count; i++ {
-					if err, ok := checkers[i](obj); !ok {
-						c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-							"error_message": Resp{
-								Message: "Fail Validating Check",
-								Data:    "",
-							},
-						})
-						return
-					} else if err != nil {
+					if err, ok := checkers[i](obj); ok || err != nil {
 						c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 							"error_message": Resp{
 								Message: "Fail Validating Check",
