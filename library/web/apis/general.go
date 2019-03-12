@@ -36,7 +36,7 @@ func Resp(message, data interface{}) interface{} {
 		Message interface{} `json:"message,omitempty"`
 		Data    interface{} `json:"data,omitempty"`
 	}
-	return HTTPResp{
+	return HTTPResp {
 		Message: message,
 		Data:    data,
 	}

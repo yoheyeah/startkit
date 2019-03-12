@@ -1,7 +1,6 @@
 package gins
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -18,11 +17,10 @@ type Claim struct {
 
 // pass by address
 func (m *Claim) CheckByObject(DB *gorm.DB, obj interface{}) (err error) {
-	return DB.Where(map[string]interface{}{"external_id": m.ExternalID}).Find(obj).Error
+	return DB.Debug().Where(map[string]interface{}{"external_id": m.ExternalID}).Find(obj).Error
 }
 
 func JWT(userID int, externalId, issuer, signedString string) (string, error) {
-	fmt.Println(userID, externalId, issuer, signedString)
 	var (
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, Claim{
 			ID:         userID,
