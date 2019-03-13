@@ -1,7 +1,6 @@
 package gorms
 
 import (
-	"startkit/library/times"
 	"startkit/starter"
 
 	"github.com/jinzhu/gorm"
@@ -12,15 +11,15 @@ import (
 func TotalCount(mysql *starter.Mysql, obj, maps interface{}) (count int, err error) {
 	defer mysql.Connector()()
 	if maps != nil {
-		err = mysql.DB.Model(obj).Where(maps).Where(map[string]interface{}{"deleted_at": times.Zero()}).Count(&count).Error
+		err = mysql.DB.Debug().Model(obj).Where(maps). /*.Where(map[string]interface{}{"deleted_at": times.Zero()})*/ Count(&count).Error
 		return
 	}
-	err = mysql.DB.Model(obj).Where(map[string]interface{}{"deleted_at": times.Zero()}).Count(&count).Error
+	err = mysql.DB.Debug().Model(obj). /*.Where(map[string]interface{}{"deleted_at": times.Zero()})*/ Count(&count).Error
 	return
 }
 
 func ScopesQuery(mysql *starter.Mysql, scopes []func(*gorm.DB) *gorm.DB, obj interface{}) (err error) {
 	defer mysql.Connector()()
-	err = mysql.DB.Debug().Scopes(scopes...).Where(map[string]interface{}{"deleted_at": times.Zero()}).Find(obj).Error
+	err = mysql.DB.Debug().Scopes(scopes...). /*.Where(map[string]interface{}{"deleted_at": times.Zero()})*/ Find(obj).Error
 	return
 }
