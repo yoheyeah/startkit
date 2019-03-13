@@ -271,9 +271,9 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 					}
 				}
 			}
-			c.JSON(http.StatusOK, map[string]interface{}{
-				"is_validated": true,
-			})
+			// c.JSON(http.StatusOK, map[string]interface{}{
+			// 	"is_validated": true,
+			// })
 		}
 	}
 }
