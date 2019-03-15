@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/acme/autocert"
+	validator "gopkg.in/go-playground/validator.v8"
 )
 
 var (
@@ -61,9 +62,8 @@ func (m *Server) Builder(c *Content) error {
 	ip, err := getLocalExternalIP()
 	if err != nil {
 		return err
-	} else {
-		m.ServerExternalIP = ip
 	}
+	m.ServerExternalIP = ip
 	for {
 		if !checkPortAvailable(strconv.Itoa(m.Port)) {
 			m.Port++
@@ -72,7 +72,8 @@ func (m *Server) Builder(c *Content) error {
 		}
 	}
 	m.RequestTimeout = m.RequestTimeout * time.Second
-	if local, err := time.LoadLocation(m.TimeZone); err != nil {
+	local, err := time.LoadLocation(m.TimeZone)
+	if err != nil {
 		time.Local = time.UTC
 	} else {
 		time.Local = local
@@ -176,21 +177,44 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 	return func(c *gin.Context) {
 		defer Mysql.Connector()()
 		var (
+			err       error
 			session   = sessions.Default(c)
 			value, ok = session.Get(key).(string)
+			req       = struct {
+				JWTToken string `json:"jwt_token" binding:"required"`
+			}{}
 		)
 		type Resp struct {
 			Message interface{} `json:"message,omitempty"`
 			Data    interface{} `json:"data,omitempty"`
 		}
 		if value == "" || !ok {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"error_message": Resp{
-					Message: "The Session Value Associated To The Given Key Is Not Existed",
-					Data:    "Key '" + key + "' Value In Session Is Not Exist In The Claim",
-				},
-			})
-			return
+			if err = c.BindJSON(&req); err != nil {
+				_, ok := err.(validator.ValidationErrors)
+				if !ok {
+					c.AbortWithStatusJSON(
+						http.StatusBadRequest, gin.H{
+							"error_message": Resp{
+								Message: "Failed",
+								Data: "Internal Server Error For Binding The Request For 'jwt_token' By JSON POST Request" +
+									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
+									"Key '" + key + "' Value In Session Is Not Exist In The Claim",
+							},
+						})
+				} else {
+					c.AbortWithStatusJSON(
+						http.StatusBadRequest, gin.H{
+							"error_message": Resp{
+								Message: "Failed",
+								Data: "Invalid Request For 'jwt_token' By JSON POST Request" +
+									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
+									"Key '" + key + "' Value In Session Is Not Exist In The Claim",
+							},
+						})
+				}
+				return
+			}
+			value = req.JWTToken
 		}
 		if token, err := jwt.ParseWithClaims(value, &gins.Claim{}, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
