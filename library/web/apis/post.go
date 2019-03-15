@@ -9,6 +9,7 @@ import (
 
 type POST struct {
 	API
+	ValidatorFuncs []func() bool
 	// Conditions map[string]string
 	// DBWheres   []func(db *gorm.DB) *gorm.DB
 }
