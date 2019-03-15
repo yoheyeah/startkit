@@ -1,14 +1,17 @@
 package starter
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"startkit/library/gins"
 	"strconv"
+	"strings"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -177,44 +180,66 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 	return func(c *gin.Context) {
 		defer Mysql.Connector()()
 		var (
-			err       error
-			session   = sessions.Default(c)
-			value, ok = session.Get(key).(string)
-			req       = struct {
+			err        error
+			reqBody    []byte
+			headerSubs []string
+			session    = sessions.Default(c)
+			value, ok  = session.Get(key).(string)
+			header     = c.Request.Header.Get("Authorization")
+			req        = struct {
 				JWTToken string `json:"jwt_token" binding:"required"`
 			}{}
+			// body       = c.Copy().Request.Body
 		)
 		type Resp struct {
 			Message interface{} `json:"message,omitempty"`
 			Data    interface{} `json:"data,omitempty"`
 		}
 		if value == "" || !ok {
-			if err = c.BindJSON(&req); err != nil {
-				_, ok := err.(validator.ValidationErrors)
-				if !ok {
-					c.AbortWithStatusJSON(
-						http.StatusBadRequest, gin.H{
-							"error_message": Resp{
-								Message: "Failed",
-								Data: "Internal Server Error For Binding The Request For 'jwt_token' By JSON POST Request" +
+			if header == "" {
+				reqBody, _ = ioutil.ReadAll(c.Request.Body)
+				c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
+				if err = c.BindJSON(&req); err != nil {
+					_, ok := err.(validator.ValidationErrors)
+					if !ok {
+						c.AbortWithStatusJSON(
+							http.StatusBadRequest, gin.H{
+								"error_message": Resp{
+									Message: "Failed",
+									Data:    "Internal Server Error For Binding The Request For 'jwt_token' By JSON POST Request", /*+
 									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
-									"Key '" + key + "' Value In Session Is Not Exist In The Claim",
-							},
-						})
-				} else {
-					c.AbortWithStatusJSON(
-						http.StatusBadRequest, gin.H{
-							"error_message": Resp{
-								Message: "Failed",
-								Data: "Invalid Request For 'jwt_token' By JSON POST Request" +
+									"Key '" + key + "' Value In Session Is Not Exist In The Claim" */
+								},
+							})
+					} else {
+						c.AbortWithStatusJSON(
+							http.StatusBadRequest, gin.H{
+								"error_message": Resp{
+									Message: "Failed",
+									Data:    "Invalid Request For 'jwt_token' By JSON POST Request", /* +
 									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
-									"Key '" + key + "' Value In Session Is Not Exist In The Claim",
-							},
-						})
+									"Key '" + key + "' Value In Session Is Not Exist In The Claim", */
+								},
+							})
+					}
+					return
 				}
-				return
+				c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
+				value = req.JWTToken
+			} else {
+				headerSubs = strings.SplitN(header, " ", 2)
+				if !(len(headerSubs) == 2 && headerSubs[0] == "Bearer") {
+					c.AbortWithStatusJSON(
+						http.StatusBadRequest, gin.H{
+							"error_message": Resp{
+								Message: "Failed",
+								Data:    "Authorization Header Is Not Valid",
+							},
+						})
+					return
+				}
+				value = headerSubs[1]
 			}
-			value = req.JWTToken
 		}
 		if token, err := jwt.ParseWithClaims(value, &gins.Claim{}, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
