@@ -20,7 +20,7 @@ func GinErrors() gin.HandlerFunc {
 				switch e.Type {
 				case gin.ErrorTypePublic:
 					if !c.Writer.Written() {
-						c.JSON(c.Writer.Status(), gin.H{
+						c.AbortWithStatusJSON(c.Writer.Status(), gin.H{
 							"error_message": Resp{
 								Message: "Public Error",
 								Data:    e.Error(),
@@ -42,7 +42,7 @@ func GinErrors() gin.HandlerFunc {
 					if c.Writer.Status() != http.StatusOK {
 						status = c.Writer.Status()
 					}
-					c.JSON(status, gin.H{
+					c.AbortWithStatusJSON(status, gin.H{
 						"error_message": Resp{
 							Message: "Request Binding Error",
 							Data:    list,
@@ -53,7 +53,7 @@ func GinErrors() gin.HandlerFunc {
 				}
 			}
 			if !c.Writer.Written() {
-				c.JSON(http.StatusInternalServerError, gin.H{
+				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 					"error_message": Resp{
 						Message: "Internal Server Error",
 						Data:    c.Errors[len(c.Errors)-1].Error(),

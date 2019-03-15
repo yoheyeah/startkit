@@ -206,7 +206,7 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 							http.StatusBadRequest, gin.H{
 								"error_message": Resp{
 									Message: "Failed",
-									Data:    "Internal Server Error For Binding The Request For 'jwt_token' By JSON POST Request", /*+
+									Data:    "Internal Server Error Reading 'jwt_token' For Authorization Check", /*+
 									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
 									"Key '" + key + "' Value In Session Is Not Exist In The Claim" */
 								},
@@ -216,7 +216,7 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 							http.StatusBadRequest, gin.H{
 								"error_message": Resp{
 									Message: "Failed",
-									Data:    "Invalid Request For 'jwt_token' By JSON POST Request", /* +
+									Data:    "Invalid Request Reading 'jwt_token' For Authorization Check", /* +
 									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
 									"Key '" + key + "' Value In Session Is Not Exist In The Claim", */
 								},
