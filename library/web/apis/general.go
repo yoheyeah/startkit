@@ -10,6 +10,8 @@ import (
 
 type DBFunc func(obj interface{}) render.JSON
 
+type ValidatorFunc func(api *API) (code int, message interface{}, err error)
+
 type CustomHandler func(api *API) error
 
 type API struct {
@@ -24,6 +26,7 @@ type API struct {
 	Querys         map[string]string
 	Request        interface{}
 	CustomHandlers map[string]CustomHandler // replace the general function Run() error in the binding interface
+	ValidatorFuncs []ValidatorFunc
 	DBObject       interface{}
 	DBResult       interface{}
 	DBCreate       []interface{}
@@ -36,7 +39,7 @@ func Resp(message, data interface{}) interface{} {
 		Message interface{} `json:"message,omitempty"`
 		Data    interface{} `json:"data,omitempty"`
 	}
-	return HTTPResp {
+	return HTTPResp{
 		Message: message,
 		Data:    data,
 	}
@@ -92,21 +95,6 @@ func (api *API) Query(querys map[string]string) *API {
 	return api
 }
 
-func (api *API) Find(dbResult interface{}) *API {
-	api.DBResult = dbResult
-	return api
-}
-
-func (api *API) Create(dbCreate []interface{}) *API {
-	api.DBCreate = dbCreate
-	return api
-}
-
-func (api *API) Update(dbUpdate []interface{}) *API {
-	api.DBUpdate = dbUpdate
-	return api
-}
-
 func (api *API) RandomID(b bool) *API {
 	s := strconv.FormatBool(b)
 	if len(api.Querys) == 0 {
@@ -130,6 +118,11 @@ func (api *API) Pagination(start, limit string) *API {
 	return api
 }
 
+func (api *API) Validators(fs ...ValidatorFunc) *API {
+	api.ValidatorFuncs = append(api.ValidatorFuncs, fs...)
+	return api
+}
+
 func (api *API) Model(obj interface{}) *API {
 	api.Structure = obj
 	return api
@@ -137,6 +130,21 @@ func (api *API) Model(obj interface{}) *API {
 
 func (api *API) Table(obj interface{}) *API {
 	api.DBObject = obj
+	return api
+}
+
+func (api *API) Find(dbResult interface{}) *API {
+	api.DBResult = dbResult
+	return api
+}
+
+func (api *API) Create(dbCreate []interface{}) *API {
+	api.DBCreate = dbCreate
+	return api
+}
+
+func (api *API) Update(dbUpdate []interface{}) *API {
+	api.DBUpdate = dbUpdate
 	return api
 }
 

@@ -51,6 +51,7 @@ type Server struct {
 	SessionServeSecureMode bool
 	JWTIssuer              string
 	JWTSignedString        string
+	JWTExpireAfterInMin    int
 	CrtFilePath            string
 	KeyFilePath            string
 }
@@ -176,6 +177,60 @@ func (m *Server) IsSessionsKeysExisted(keys []string) gin.HandlerFunc {
 	}
 }
 
+func (m *Server) ParseJWT(c *gin.Context, key string, checkers []func(obj interface{}) (error, bool)) (bool, *gins.Claim) {
+	var (
+		err        error
+		headerSubs []string
+		session    = sessions.Default(c)
+		value, ok  = session.Get(key).(string)
+		header     = c.Request.Header.Get("Authorization")
+		token      = &jwt.Token{}
+		req        = struct {
+			JWTToken string `json:"jwt_token" binding:"required"`
+		}{}
+		body = c.Copy().Request.Body
+	)
+	if value == "" || !ok {
+		if header == "" {
+			if err = c.BindJSON(&req); err != nil {
+				_, ok := err.(validator.ValidationErrors)
+				if !ok {
+					return false, nil
+				}
+				return false, nil
+			}
+			c.Request.Body = body
+			value = req.JWTToken
+		} else {
+			headerSubs = strings.SplitN(header, " ", 2)
+			if !(len(headerSubs) == 2 && headerSubs[0] == "Bearer") {
+				return false, nil
+			}
+			value = headerSubs[1]
+		}
+	}
+	if token, err = jwt.ParseWithClaims(value, &gins.Claim{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("Unofficial Sign Method for Token")
+		}
+		return []byte(m.JWTSignedString), nil
+	}); err != nil {
+		return false, nil
+	} else if !token.Valid {
+		return false, nil
+	} else if token == nil {
+		return false, nil
+	} else if claim, ok := token.Claims.(*gins.Claim); ok && token.Valid {
+		if err != nil {
+			return false, nil
+		}
+		if claim == nil {
+			return false, nil
+		}
+	}
+	return true, token.Claims.(*gins.Claim)
+}
+
 func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, checkers []func(obj interface{}) (error, bool)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer Mysql.Connector()()
@@ -206,9 +261,7 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 							http.StatusBadRequest, gin.H{
 								"error_message": Resp{
 									Message: "Failed",
-									Data:    "Internal Server Error Reading 'jwt_token' For Authorization Check", /*+
-									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
-									"Key '" + key + "' Value In Session Is Not Exist In The Claim" */
+									Data:    "Internal Server Error Reading 'jwt_token' For Authorization Check",
 								},
 							})
 					} else {
@@ -216,9 +269,7 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 							http.StatusBadRequest, gin.H{
 								"error_message": Resp{
 									Message: "Failed",
-									Data:    "Invalid Request Reading 'jwt_token' For Authorization Check", /* +
-									", And Also The Session Value Associated To The Given Key Is Not Existed, " +
-									"Key '" + key + "' Value In Session Is Not Exist In The Claim", */
+									Data:    "Invalid Request Reading 'jwt_token' For Authorization Check",
 								},
 							})
 					}
@@ -320,9 +371,6 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 					}
 				}
 			}
-			// c.JSON(http.StatusOK, map[string]interface{}{
-			// 	"is_validated": true,
-			// })
 		}
 	}
 }

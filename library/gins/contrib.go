@@ -1,6 +1,7 @@
 package gins
 
 import (
+	"errors"
 	"time"
 
 	"github.com/jinzhu/gorm"
@@ -10,27 +11,63 @@ import (
 
 type Claim struct {
 	jwt.StandardClaims
-	ID         int    `json:"id"`
-	ExternalID string `json:"external_id"`
-	Time       int64  `json:"time_in_unix"`
+	CustomFields map[string]interface{} `json:"custom_fields"`
+	ID           int                    `json:"id"`
+	ExternalID   string                 `json:"external_id"`
+	Time         int64                  `json:"time_in_unix"`
 }
 
 // pass by address
 func (m *Claim) CheckByObject(DB *gorm.DB, obj interface{}) (err error) {
+	var (
+		scopes []func(db *gorm.DB) *gorm.DB
+	)
+	if m.ID != 0 {
+		scopes = append(scopes, func(db *gorm.DB) *gorm.DB { return db.Where(map[string]interface{}{"id": m.ID}) })
+	}
+	if m.ExternalID != "" {
+		scopes = append(scopes, func(db *gorm.DB) *gorm.DB { return db.Where(map[string]interface{}{"external_id": m.ExternalID}) })
+	}
+	if len(m.CustomFields) > 0 {
+		scopes = append(scopes, func(db *gorm.DB) *gorm.DB { return db.Where(m.CustomFields) })
+	}
+	if len(scopes) <= 0 {
+		return errors.New("Invalid JWT Claim")
+	}
+	return DB.Debug().Scopes(scopes...).Find(obj).Error
+}
+
+// pass by address
+func (m *Claim) CheckByCustomFields(DB *gorm.DB, obj interface{}) (err error) {
+	return DB.Debug().Where(m.CustomFields).Find(obj).Error
+}
+
+// pass by address
+func (m *Claim) CheckByExternalID(DB *gorm.DB, obj interface{}) (err error) {
 	return DB.Debug().Where(map[string]interface{}{"external_id": m.ExternalID}).Find(obj).Error
 }
 
-func JWT(userID int, externalId, issuer, signedString string) (string, error) {
+// pass by address
+func (m *Claim) CheckByID(DB *gorm.DB, obj interface{}) (err error) {
+	return DB.Debug().Where(map[string]interface{}{"id": m.ID}).Find(obj).Error
+}
+
+func (m *Claim) IsExpired() bool {
+	return time.Now().After(time.Unix(m.ExpiresAt, 0))
+}
+
+func JWT(userID int, expireAfterInMin int, externalId, issuer, signedString string, customFields map[string]interface{}) (string, error) {
 	var (
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, Claim{
-			ID:         userID,
-			ExternalID: externalId,
-			Time:       time.Now().UTC().Unix(),
+			CustomFields: customFields,
+			ID:           userID,
+			ExternalID:   externalId,
+			Time:         time.Now().UTC().Unix(),
 			StandardClaims: jwt.StandardClaims{
 				Issuer:    issuer,
 				IssuedAt:  time.Now().UTC().Unix(),
 				NotBefore: time.Now().UTC().Unix(),
-				ExpiresAt: time.Now().AddDate(0, 0, 14).UTC().Unix(),
+				ExpiresAt: time.Now().AddDate(0, 0, expireAfterInMin/(60*24)).UTC().Unix(),
 				Id:        "",
 				Audience:  "",
 				Subject:   "",

@@ -1,6 +1,7 @@
 package apis
 
 import (
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -50,6 +51,11 @@ func (g *GET) Run() (err error) {
 		g.ServeStatic()
 		return
 	}
+	// g.DBResult = reflect.Zero(reflect.ValueOf(g.DBResult).Type()).Elem().Interface() // mistake
+	// new a pointer Value p of the DBResult (pointer of the structure that use for query)
+	p := reflect.ValueOf(g.DBResult).Elem()
+	// set the pointer
+	p.Set(reflect.Zero(p.Type()))
 	g.FillInIDer()
 	g.FillInConditions()
 	g.FillInComparisons()
@@ -143,6 +149,14 @@ func (g *GET) FillInComparisons() {
 }
 
 func (g *GET) MysqlHandler() error {
+	if count := len(g.API.ValidatorFuncs); count > 0 {
+		for i := 0; i < count; i++ {
+			if code, message, err := g.API.ValidatorFuncs[i](&g.API); code > 0 || message != "" {
+				g.Ctx.AbortWithStatusJSON(code, gin.H{"response": Resp(message, err.Error())})
+				return err
+			}
+		}
+	}
 	if count, err := gorms.TotalCount(&g.Mysql, g.DBObject, nil); err != nil && err != gorm.ErrRecordNotFound {
 		g.Ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"response": Resp("DB Error", err.Error())})
 		return err
