@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
 	"startkit/library/gins"
 	"strconv"
 	"strings"
@@ -234,10 +235,15 @@ func (m *Server) ParseJWT(c *gin.Context, key string, checkers []func(obj interf
 func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, checkers []func(obj interface{}) (error, bool)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer Mysql.Connector()()
+		type Resp struct {
+			Message interface{} `json:"message,omitempty"`
+			Data    interface{} `json:"data,omitempty"`
+		}
 		var (
 			err        error
 			reqBody    []byte
 			headerSubs []string
+			p          = reflect.ValueOf(obj).Elem()
 			session    = sessions.Default(c)
 			value, ok  = session.Get(key).(string)
 			header     = c.Request.Header.Get("Authorization")
@@ -246,10 +252,7 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 			}{}
 			// body       = c.Copy().Request.Body
 		)
-		type Resp struct {
-			Message interface{} `json:"message,omitempty"`
-			Data    interface{} `json:"data,omitempty"`
-		}
+		p.Set(reflect.Zero(p.Type()))
 		if value == "" || !ok {
 			if header == "" {
 				reqBody, _ = ioutil.ReadAll(c.Request.Body)
