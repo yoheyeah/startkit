@@ -10,28 +10,31 @@ import (
 
 type DBFunc func(obj interface{}) render.JSON
 
-type ValidatorFunc func(api *API) (code int, message interface{}, err error)
+type ValidatorFunc func(api *API) (bool, error)
 
 type CustomHandler func(api *API) error
 
 type API struct {
 	*startkit.Context
-	Ctx            *gin.Context
-	StaticPath     string
-	RelativePath   string
-	Method         string
-	Headers        map[string]interface{}
-	IDer           string
-	Params         []string
-	Querys         map[string]string
-	Request        interface{}
-	CustomHandlers map[string]CustomHandler // replace the general function Run() error in the binding interface
-	ValidatorFuncs []ValidatorFunc
-	DBObject       interface{}
-	DBResult       interface{}
-	DBCreate       []interface{}
-	DBUpdate       interface{}
-	Structure      interface{}
+	Ctx                  *gin.Context
+	StaticPath           string
+	RelativePath         string
+	Method               string
+	Headers              map[string]interface{}
+	IDer                 string
+	Property             string
+	IDerPropertyRelation map[string]string
+	Params               []string
+	Querys               map[string]string
+	Request              interface{}
+	CustomHandlers       map[string]CustomHandler // replace the general function Run() error in the binding interface
+	ValidatorFuncs       []ValidatorFunc
+	DBObject             interface{}
+	DBResult             interface{}
+	DBCreate             []interface{}
+	DBUpdate             interface{}
+	Structure            interface{}
+	// DBRelated      interface{}
 }
 
 func Resp(message, data interface{}) interface{} {
@@ -95,6 +98,16 @@ func (api *API) Query(querys map[string]string) *API {
 	return api
 }
 
+func (api *API) Attach(attach string) *API {
+	api.Property = attach
+	return api
+}
+
+func (api *API) Relation(relation map[string]string) *API {
+	api.IDerPropertyRelation = relation
+	return api
+}
+
 func (api *API) RandomID(b bool) *API {
 	s := strconv.FormatBool(b)
 	if len(api.Querys) == 0 {
@@ -138,6 +151,11 @@ func (api *API) Find(dbResult interface{}) *API {
 	return api
 }
 
+// func (api *API) Related(dbRelated interface{}) *API {
+// 	api.DBRelated = dbRelated
+// 	return api
+// }
+
 func (api *API) Create(dbCreate []interface{}) *API {
 	api.DBCreate = dbCreate
 	return api
@@ -156,6 +174,9 @@ func (api *API) Gin(ctx *gin.Context) *API {
 func (api *API) Handle(group *gin.RouterGroup) gin.IRoutes {
 	if api.IDer != "" {
 		api.RelativePath = api.RelativePath + "/:" + api.IDer
+	}
+	if api.Property != "" {
+		api.RelativePath = api.RelativePath + "/" + api.Property
 	}
 	if count := len(api.Params); count > 0 {
 		for i := 0; i < count; i++ {

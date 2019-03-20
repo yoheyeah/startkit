@@ -12,7 +12,7 @@ import (
 type Claim struct {
 	jwt.StandardClaims
 	CustomFields map[string]interface{} `json:"custom_fields"`
-	ID           int                    `json:"id"`
+	ID           uint                   `json:"id"`
 	ExternalID   string                 `json:"external_id"`
 	Time         int64                  `json:"time_in_unix"`
 }
@@ -56,7 +56,7 @@ func (m *Claim) IsExpired() bool {
 	return time.Now().After(time.Unix(m.ExpiresAt, 0))
 }
 
-func JWT(userID int, expireAfterInMin int, externalId, issuer, signedString string, customFields map[string]interface{}) (string, error) {
+func JWT(userID uint, expireAfterInMin int, externalId, issuer, signedString string, customFields map[string]interface{}) (string, error) {
 	var (
 		token = jwt.NewWithClaims(jwt.SigningMethodHS256, Claim{
 			CustomFields: customFields,

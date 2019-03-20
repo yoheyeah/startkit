@@ -81,7 +81,11 @@ func (g *GET) ServeStatic() {
 func (g *GET) FillInIDer() {
 	if g.IDer != "" {
 		if id := g.Ctx.Param(g.IDer); id != "" {
-			g.DBWheres = append(g.DBWheres, gorms.Where(g.IDer, " = ? ", id))
+			if v, ok := g.IDerPropertyRelation[g.IDer]; ok {
+				g.DBWheres = append(g.DBWheres, gorms.Where(v, " = ? ", id))
+			} else {
+				g.DBWheres = append(g.DBWheres, gorms.Where(g.IDer, " = ? ", id))
+			}
 		}
 	}
 	return
@@ -151,8 +155,7 @@ func (g *GET) FillInComparisons() {
 func (g *GET) MysqlHandler() error {
 	if count := len(g.API.ValidatorFuncs); count > 0 {
 		for i := 0; i < count; i++ {
-			if code, message, err := g.API.ValidatorFuncs[i](&g.API); code > 0 || message != "" {
-				g.Ctx.AbortWithStatusJSON(code, gin.H{"response": Resp(message, err.Error())})
+			if ok, err := g.API.ValidatorFuncs[i](&g.API); !ok {
 				return err
 			}
 		}

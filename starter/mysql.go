@@ -39,7 +39,7 @@ type MysqlInstance struct {
 }
 
 type MysqlModel struct {
-	ID        int        `gorm:"primary_key" json:"-"`
+	ID        uint       `gorm:"primary_key" json:"-"`
 	CreatedAt time.Time  `json:"created_at,omitempty" gorm:"column:created_at; sql:type:datetime;default:'1980-01-01'"`
 	UpdatedAt time.Time  `json:"edited_at,omitempty" gorm:"column:edited_at; sql:type:datetime;default:'1980-01-01'"`
 	DeletedAt *time.Time `json:"deleted_at,omitempty" gorm:"column:deleted_at; sql:type:datetime;default:NULL"`
