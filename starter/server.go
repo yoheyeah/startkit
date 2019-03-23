@@ -236,8 +236,8 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 	return func(c *gin.Context) {
 		defer Mysql.Connector()()
 		type Resp struct {
-			Message interface{} `json:"message,omitempty"`
-			Data    interface{} `json:"data,omitempty"`
+			Message interface{} `json:"message"`
+			Data    interface{} `json:"data"`
 		}
 		var (
 			err        error
@@ -276,6 +276,7 @@ func (m *Server) SessionVarification(key string, Mysql *Mysql, obj interface{}, 
 								},
 							})
 					}
+					c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))
 					return
 				}
 				c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(reqBody))

@@ -202,13 +202,14 @@ func RandomID(g *GET) func(db *gorm.DB) *gorm.DB {
 }
 
 func OrderBy(g *GET) func(db *gorm.DB) *gorm.DB {
-	if count, err := gorms.TotalCount(&g.Mysql, g.DBObject, nil); err != nil {
-		return nil
-	} else if count > 0 {
-		if _, ok := g.Conditions["order_by"]; !ok || g.Conditions["order_by"] == "" {
-			g.Conditions["order_by"] = "id"
-		}
+	// if count, err := gorms.TotalCount(&g.Mysql, g.DBObject, nil); err != nil {
+	// 	return nil
+	// } else if count > 0 {
+	if _, ok := g.Conditions["order_by"]; !ok || g.Conditions["order_by"] == "" {
+		return gorms.OrderBy("id")
 	}
+	return gorms.OrderBy(g.Conditions["order_by"])
+	// }
 	return nil
 }
 

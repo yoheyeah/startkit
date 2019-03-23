@@ -39,8 +39,8 @@ type API struct {
 
 func Resp(message, data interface{}) interface{} {
 	type HTTPResp struct {
-		Message interface{} `json:"message,omitempty"`
-		Data    interface{} `json:"data,omitempty"`
+		Message interface{} `json:"message"`
+		Data    interface{} `json:"data"`
 	}
 	return HTTPResp{
 		Message: message,
@@ -107,6 +107,15 @@ func (api *API) Relation(relation map[string]string) *API {
 	api.IDerPropertyRelation = relation
 	return api
 }
+
+// func (api *API) OrderBy(field string) *API {
+// 	if len(api.Querys) == 0 {
+// 		api.Querys = map[string]string{"order_by": field}
+// 	} else {
+// 		api.Querys["order_by"] = field
+// 	}
+// 	return api
+// }
 
 func (api *API) RandomID(b bool) *API {
 	s := strconv.FormatBool(b)
