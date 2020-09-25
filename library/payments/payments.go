@@ -1,46 +1,86 @@
 package payments
 
+type (
+	PaymentType string
+)
+
+const (
+	PayPalPayment    PaymentType = "PayPal"
+	AliPayPayment    PaymentType = "AliPay"
+	WeChatPayPayment PaymentType = "WeChatPay"
+	UnionPayPayment  PaymentType = "UnionPay"
+)
+
 type Detail struct {
-	GatewayType                  string
-	ClientID                     string
-	SecretID                     string
-	PaymentIntent                string
-	PaymentMethod                string
-	PaymentMethodCardType        string
-	PaymentMethodCardNumber      string
-	PaymentMethodCardExpireMonth string
-	PaymentMethodCardExpireYear  string
-	PaymentMethodCardCVV2        string
-	PayerFirstName               string
-	PayerLastName                string
-	Total                        string
-	Currency                     string
-	ReturnURL                    string
-	RedirectURL                  string
-	CancelURL                    string
-	PaymentDescription           string
+	GatewayType      string
+	IsProduction     bool
+	Paymentdetail    Paymentdetail
+	PayPalImplDetail PayPalImplDetail
+	AliPayImplDetail AliPayImplDetail
+}
+
+type Paymentdetail struct {
+	Subject           string
+	ClientName        string
+	ClientEmail       string
+	ProductName       string
+	Note              string
+	Total             string
+	DepositPercentage string
+	Price             string
+	Currency          string
 }
 
 type Payment interface {
-	Direct() error
-	CreditCardPayment() error
+	ReceivePayment() ([]byte, error)
+	Refund() ([]byte, error)
+	CreateOrder() (resp interface{}, err error)
+	GetOrder(orderID string) (resp interface{}, err error)
+	AuthorizeOrder(orderID string) (resp interface{}, err error)
+	CaptureOrder(orderID string, isFinish bool) (resp interface{}, err error)
 }
 
 func GatewayType(p string, detail *Detail) Payment {
-	switch p {
-	case "PayPal":
+	switch PaymentType(p) {
+	case PayPalPayment:
 		return &PayPal{Detail: detail}
+	case AliPayPayment:
+		return &AliPay{Detail: detail}
+	case WeChatPayPayment:
+		return &WeChatPay{Detail: detail}
+	case UnionPayPayment:
+		return &UnionPay{Detail: detail}
 	default:
 		return &PayPal{Detail: detail}
 	}
 }
 
-func Direct(detail Detail) error {
+func ReceivePayment(detail Detail) ([]byte, error) {
 	p := GatewayType(detail.GatewayType, &detail)
-	return p.Direct()
+	return p.ReceivePayment()
 }
 
-func CreditCardPayment(detail Detail) error {
+func Refund(detail Detail) ([]byte, error) {
 	p := GatewayType(detail.GatewayType, &detail)
-	return p.CreditCardPayment()
+	return p.Refund()
+}
+
+func CreateOrder(detail Detail) (resp interface{}, err error) {
+	p := GatewayType(detail.GatewayType, &detail)
+	return p.CreateOrder()
+}
+
+func GetOrder(orderID string, detail Detail) (resp interface{}, err error) {
+	p := GatewayType(detail.GatewayType, &detail)
+	return p.GetOrder(orderID)
+}
+
+func AuthorizeOrder(orderID string, detail Detail) (resp interface{}, err error) {
+	p := GatewayType(detail.GatewayType, &detail)
+	return p.AuthorizeOrder(orderID)
+}
+
+func CaptureOrder(orderID string, isFinish bool, detail Detail) (resp interface{}, err error) {
+	p := GatewayType(detail.GatewayType, &detail)
+	return p.CaptureOrder(orderID, isFinish)
 }

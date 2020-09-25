@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"forex-org/systems"
 	"io"
 	"mime/multipart"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -114,6 +116,9 @@ func MustOpen(fileName, filePath string) (*os.File, error) {
 		return nil, fmt.Errorf("file.IsNotExistMkDir check the stat described error is the file does not exist - src: %s, err: %v", src, err)
 	}
 	if fileName != "" {
+		if src[len(src)-len(systems.GetSplit())-1:len(src)-1] != systems.GetSplit() {
+			src = src + systems.GetSplit()
+		}
 		f, err := Open(src+fileName, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 		if err != nil {
 			return nil, fmt.Errorf("Fail to OpenFile :%v", err)
@@ -159,4 +164,21 @@ func ExecPath() (string, error) {
 		return "", err
 	}
 	return filepath.Abs(file)
+}
+
+func MustWrite(fileName, filePath string, file multipart.File) (err error) {
+	descriptor, err := MustOpen(fileName, filePath)
+	if err != nil {
+		return
+	}
+	defer descriptor.Close()
+	_, err = io.Copy(descriptor, file)
+	if err != nil {
+		return
+	}
+	return nil
+}
+
+func GetExt(fileName string) string {
+	return path.Ext(fileName)
 }

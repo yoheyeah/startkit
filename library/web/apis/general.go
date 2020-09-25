@@ -2,6 +2,7 @@ package apis
 
 import (
 	"startkit"
+	"startkit/starter"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +13,11 @@ type DBFunc func(obj interface{}) render.JSON
 
 type ValidatorFunc func(api *API) (bool, error)
 
+type FillQueryFunc func(api *API) (map[string]interface{}, error)
+
 type CustomHandler func(api *API) error
+
+type CustomModifyFunc func(DB *starter.Mysql, obj interface{}) (code int, jsonObj gin.H, err error)
 
 type API struct {
 	*startkit.Context
@@ -23,6 +28,7 @@ type API struct {
 	Headers              map[string]interface{}
 	IDer                 string
 	Property             string
+	Preloads             map[string][]interface{}
 	IDerPropertyRelation map[string]string
 	Params               []string
 	Querys               map[string]string
@@ -34,6 +40,8 @@ type API struct {
 	DBCreate             []interface{}
 	DBUpdate             interface{}
 	Structure            interface{}
+	ModifyFuncs          []CustomModifyFunc
+	FillQueryFuncs       []FillQueryFunc
 	// DBRelated      interface{}
 }
 
@@ -98,6 +106,11 @@ func (api *API) Query(querys map[string]string) *API {
 	return api
 }
 
+func (api *API) Preloading(preloads map[string][]interface{}) *API {
+	api.Preloads = preloads
+	return api
+}
+
 func (api *API) Attach(attach string) *API {
 	api.Property = attach
 	return api
@@ -140,8 +153,31 @@ func (api *API) Pagination(start, limit string) *API {
 	return api
 }
 
+func (api *API) NotNull(field string) *API {
+	if len(api.Querys) == 0 {
+		api.Querys = map[string]string{"not_null": field}
+	} else {
+		api.Querys["not_null"] = field
+	}
+	return api
+}
+
+func (api *API) Null(field string) *API {
+	if len(api.Querys) == 0 {
+		api.Querys = map[string]string{"null": field}
+	} else {
+		api.Querys["null"] = field
+	}
+	return api
+}
+
 func (api *API) Validators(fs ...ValidatorFunc) *API {
 	api.ValidatorFuncs = append(api.ValidatorFuncs, fs...)
+	return api
+}
+
+func (api *API) AddQuery(fs ...FillQueryFunc) *API {
+	api.FillQueryFuncs = append(api.FillQueryFuncs, fs...)
 	return api
 }
 
@@ -155,8 +191,8 @@ func (api *API) Table(obj interface{}) *API {
 	return api
 }
 
-func (api *API) Find(dbResult interface{}) *API {
-	api.DBResult = dbResult
+func (api *API) Find(obj interface{}) *API {
+	api.DBResult = obj
 	return api
 }
 
@@ -165,13 +201,18 @@ func (api *API) Find(dbResult interface{}) *API {
 // 	return api
 // }
 
-func (api *API) Create(dbCreate []interface{}) *API {
-	api.DBCreate = dbCreate
+func (api *API) ModifyBy(funcs []CustomModifyFunc) *API {
+	api.ModifyFuncs = funcs
 	return api
 }
 
-func (api *API) Update(dbUpdate []interface{}) *API {
-	api.DBUpdate = dbUpdate
+func (api *API) Create(obj []interface{}) *API {
+	api.DBCreate = obj
+	return api
+}
+
+func (api *API) Update(obj []interface{}) *API {
+	api.DBUpdate = obj
 	return api
 }
 

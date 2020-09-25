@@ -12,13 +12,13 @@ import (
 type Claim struct {
 	jwt.StandardClaims
 	CustomFields map[string]interface{} `json:"custom_fields"`
-	ID           uint                   `json:"id"`
+	ID           uint                   `json:"-"`
 	ExternalID   string                 `json:"external_id"`
 	Time         int64                  `json:"time_in_unix"`
 }
 
 // pass by address
-func (m *Claim) CheckByObject(DB *gorm.DB, obj interface{}) (err error) {
+func (m *Claim) FindByObject(DB *gorm.DB, obj interface{}) (err error) {
 	var (
 		scopes []func(db *gorm.DB) *gorm.DB
 	)
@@ -34,22 +34,22 @@ func (m *Claim) CheckByObject(DB *gorm.DB, obj interface{}) (err error) {
 	if len(scopes) <= 0 {
 		return errors.New("Invalid JWT Claim")
 	}
-	return DB.Debug().Scopes(scopes...).Find(obj).Error
+	return DB.Scopes(scopes...).Find(obj).Error
 }
 
 // pass by address
-func (m *Claim) CheckByCustomFields(DB *gorm.DB, obj interface{}) (err error) {
-	return DB.Debug().Where(m.CustomFields).Find(obj).Error
+func (m *Claim) FindByCustomFields(DB *gorm.DB, obj interface{}) (err error) {
+	return DB.Where(m.CustomFields).Find(obj).Error
 }
 
 // pass by address
-func (m *Claim) CheckByExternalID(DB *gorm.DB, obj interface{}) (err error) {
-	return DB.Debug().Where(map[string]interface{}{"external_id": m.ExternalID}).Find(obj).Error
+func (m *Claim) FindByExternalID(DB *gorm.DB, obj interface{}) (err error) {
+	return DB.Where(map[string]interface{}{"external_id": m.ExternalID}).Find(obj).Error
 }
 
 // pass by address
-func (m *Claim) CheckByID(DB *gorm.DB, obj interface{}) (err error) {
-	return DB.Debug().Where(map[string]interface{}{"id": m.ID}).Find(obj).Error
+func (m *Claim) FindByID(DB *gorm.DB, obj interface{}) (err error) {
+	return DB.Where(map[string]interface{}{"id": m.ID}).Find(obj).Error
 }
 
 func (m *Claim) IsExpired() bool {
@@ -58,21 +58,23 @@ func (m *Claim) IsExpired() bool {
 
 func JWT(userID uint, expireAfterInMin int, externalId, issuer, signedString string, customFields map[string]interface{}) (string, error) {
 	var (
-		token = jwt.NewWithClaims(jwt.SigningMethodHS256, Claim{
-			CustomFields: customFields,
-			ID:           userID,
-			ExternalID:   externalId,
-			Time:         time.Now().UTC().Unix(),
-			StandardClaims: jwt.StandardClaims{
-				Issuer:    issuer,
-				IssuedAt:  time.Now().UTC().Unix(),
-				NotBefore: time.Now().UTC().Unix(),
-				ExpiresAt: time.Now().AddDate(0, 0, expireAfterInMin/(60*24)).UTC().Unix(),
-				Id:        "",
-				Audience:  "",
-				Subject:   "",
-			},
-		})
+		token = jwt.NewWithClaims(
+			jwt.SigningMethodHS256,
+			Claim{
+				CustomFields: customFields,
+				ID:           userID,
+				ExternalID:   externalId,
+				Time:         time.Now().Unix(),
+				StandardClaims: jwt.StandardClaims{
+					Issuer:    issuer,
+					IssuedAt:  time.Now().Unix(),
+					NotBefore: time.Now().Unix(),
+					ExpiresAt: time.Now().Add(time.Duration(expireAfterInMin) * time.Minute).Unix(),
+					Id:        "",
+					Audience:  "",
+					Subject:   "",
+				},
+			})
 		tkn, err = token.SignedString([]byte(signedString))
 	)
 	if err != nil {

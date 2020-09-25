@@ -35,3 +35,24 @@ func OrderBy(field string) func(db *gorm.DB) *gorm.DB {
 		return db.Scopes().Order(field)
 	}
 }
+
+func IsNotNull(field string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Scopes().Where(field + " IS NOT NULL AND " + field + " NOT IN ('')")
+	}
+}
+
+func IsNull(field string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Scopes().Where(field + " IS NULL OR " + field + " IN ('')")
+	}
+}
+
+func Preload(column string, conditions []interface{}) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if len(conditions) > 0 {
+			return db.Scopes().Preload(column, conditions)
+		}
+		return db.Scopes().Preload(column)
+	}
+}

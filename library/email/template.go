@@ -13,10 +13,12 @@ type Template interface {
 }
 
 type Setter struct {
+	Provider                                 string
 	Host, Port                               string
 	User, Password                           string
 	Type, Sender, Subject, Topic, Link, Logo string
 	Content                                  string
+	ReplyTo                                  string
 	Receivers                                []string
 }
 

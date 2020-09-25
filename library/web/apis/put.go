@@ -2,6 +2,7 @@ package apis
 
 import (
 	"net/http"
+	"reflect"
 	"startkit/library/gorms"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,9 @@ type PUT struct {
 }
 
 func (p *PUT) Run() (err error) {
+	ptr := reflect.ValueOf(p.DBResult).Elem()
+	// set the pointer
+	ptr.Set(reflect.Zero(ptr.Type()))
 	p.FillInIDer()
 	for _, name := range p.API.Context.App.InUseService {
 		switch name {
@@ -39,7 +43,7 @@ func (p *PUT) MysqlHandler() error {
 		p.Ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"response": Resp("DB Error", err.Error())})
 		return err
 	} else if count <= 0 || err == gorm.ErrRecordNotFound {
-		p.Ctx.JSON(http.StatusOK, gin.H{"response": Resp("No Record", map[string]int{"count": count})})
+		p.Ctx.JSON(http.StatusOK, gin.H{"response": Resp("No Record", []string{})})
 		return nil
 	}
 	if err := gorms.ScopesUpdate(&p.Mysql, p.DBWheres, p.DBUpdate); err != nil {

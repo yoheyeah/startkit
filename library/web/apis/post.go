@@ -2,6 +2,7 @@ package apis
 
 import (
 	"net/http"
+	"reflect"
 	"startkit/library/gorms"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,9 @@ type POST struct {
 }
 
 func (p *POST) Run() (err error) {
+	ptr := reflect.ValueOf(p.DBResult).Elem()
+	// set the pointer
+	ptr.Set(reflect.Zero(ptr.Type()))
 	for _, name := range p.API.Context.App.InUseService {
 		switch name {
 		case "Mysql":

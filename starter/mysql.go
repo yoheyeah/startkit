@@ -39,7 +39,7 @@ type MysqlInstance struct {
 }
 
 type MysqlModel struct {
-	ID        uint       `gorm:"primary_key" json:"-"`
+	ID        uint       `gorm:"primary_key" json:"id"`
 	CreatedAt time.Time  `json:"created_at" gorm:"column:created_at; sql:type:datetime;default:'1980-01-01'"`
 	UpdatedAt time.Time  `json:"edited_at" gorm:"column:edited_at; sql:type:datetime;default:'1980-01-01'"`
 	DeletedAt *time.Time `json:"deleted_at" gorm:"column:deleted_at; sql:type:datetime;default:NULL"`
@@ -115,13 +115,11 @@ func createCallBack(scope *gorm.Scope) {
 	if !scope.HasError() {
 		if createTimeField, ok := scope.FieldByName("CreatedTime"); ok {
 			if createTimeField.IsBlank {
-				fmt.Println(time.Now().Unix())
 				createTimeField.Set(time.Now().Unix())
 			}
 		}
 		if modifyTimeField, ok := scope.FieldByName("EditedTime"); ok {
 			if modifyTimeField.IsBlank {
-				fmt.Println(time.Now().Unix())
 				modifyTimeField.Set(time.Now().Unix())
 			}
 		}
@@ -135,7 +133,6 @@ func (m *Mysql) setUpdateCallback() {
 
 func updateCallBack(scope *gorm.Scope) {
 	if _, ok := scope.Get("gorm:update_column"); !ok {
-		fmt.Println(time.Now().Unix())
 		scope.SetColumn("EditedTime", time.Now().Unix())
 	}
 }
@@ -152,7 +149,6 @@ func deleteCallBack(scope *gorm.Scope) {
 			extraOption = fmt.Sprint(str)
 		}
 		if deletedTimeField, hasDeletedTimeField := scope.FieldByName("DeletedTime"); !scope.Search.Unscoped && hasDeletedTimeField {
-			fmt.Println(time.Now().Unix())
 			scope.Raw(fmt.Sprintf(
 				"UPDATE %v SET %v=%v%v%v",
 				scope.QuotedTableName(),
@@ -162,7 +158,6 @@ func deleteCallBack(scope *gorm.Scope) {
 				addSpace(extraOption),
 			)).Exec()
 		} else {
-			fmt.Println(time.Now().Unix())
 			scope.Raw(fmt.Sprintf(
 				"DELETE FROM %v%v%v",
 				scope.QuotedTableName(),
@@ -181,7 +176,7 @@ func addSpace(str string) string {
 }
 
 func (m *Mysql) Connector() func() error {
-	m.recursionCall(
+	if m.recursionCall(
 		func() error {
 			m.DB, m.Error = gorm.Open(
 				"mysql",
@@ -195,11 +190,24 @@ func (m *Mysql) Connector() func() error {
 		},
 		m.MaximumConnectionRetry,
 		m.MinimumRetryDuration,
-		false)
-	if !utils.AssertErr(m.Error) {
-		return m.DB.Close
+		false) {
+		if !utils.AssertErr(m.Error) {
+			return m.DB.Close
+		}
 	}
 	return nil
+}
+
+func (m *Mysql) Connection() (*gorm.DB, error) {
+	DB, err := gorm.Open(
+		"mysql",
+		fmt.Sprintf(
+			"%s:%s@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			m.Username,
+			m.Password,
+			m.Host+":"+strconv.Itoa(m.Port),
+			m.DatabaseName))
+	return DB, err
 }
 
 func (m *Mysql) recursionCall(f func() error, count, duration int, done bool) bool {
@@ -211,9 +219,8 @@ func (m *Mysql) recursionCall(f func() error, count, duration int, done bool) bo
 		return true
 	} else if count == 0 && m.Error != nil {
 		return true
-	} else {
-		time.Sleep(time.Duration(duration) * time.Second)
 	}
+	time.Sleep(time.Duration(duration) * time.Second)
 	return m.recursionCall(f, count, duration, false)
 }
 
@@ -221,7 +228,7 @@ func (m *Mysql) AutoMigrateByAddr(objs ...interface{}) {
 	m.ModelAddrs = append(m.ModelAddrs, objs...)
 	for _, model := range m.ModelAddrs {
 		defer m.Connector()()
-		m.DB.Debug().AutoMigrate(model)
+		m.DB.AutoMigrate(model)
 	}
 	return
 }

@@ -56,7 +56,9 @@ func CustomBuilder(file string) (content *Content) {
 	if !systems.IsNotExist(file) {
 		content = &Content{ConfigFile: file}
 	}
-	files.BindFileToObj(content.ConfigFile, content)
+	if err := files.BindFileToObj(content.ConfigFile, content); err != nil {
+		panic(err)
+	}
 	for i := 0; i < len(content.App.InUseService); i++ {
 		err := content.Builder(content.GetFieldOfStructPointer(content.App.InUseService[i]))
 		if err != nil {
